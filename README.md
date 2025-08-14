@@ -1,91 +1,89 @@
  
 # IntelliHire AI
 
-IntelliHire AI is an **AI-powered recruitment assistant** that understands, evaluates, and ranks CVs for specific job roles.  
-Built with **Mistral 7B (Ollama)** for local reasoning, **LangChain** for orchestration, and **Qdrant** for long-term vector storage.  
+IntelliHire AI is an **AI-powered CV evaluation & ranking system** that understands a job description (JD) and evaluates multiple CVs against that JD — producing ranked lists and per-CV ratings.  
+Built for local use with **Mistral 7B (Ollama)** for reasoning, **LangChain** for orchestration, and **Qdrant** for vector storage.
 
 **Key Features:**
-- Parse and embed CVs & job descriptions.
-- Retrieve relevant candidates using RAG.
-- Score, summarize, and recommend top candidates.
-- Natural language search for recruiters.
+- Parse CVs (PDF/DOCX/TXT) & Job Descriptions (free-form text).
+- Embed CVs & JDs, then retrieve and compare semantically via RAG.
+- Batch-rank CVs for a JD and produce explainable scores.
+- Rate a single CV against a JD (ad-hoc rating).
+- Streamlit-ready UI integration (no chatbot).
 
-> Works entirely on your local machine — no cloud API needed.
+> Local-first: runs on your laptop/device with Ollama + Qdrant — no cloud APIs required.
 
-```
-CV Upload (PDF/DOCX/Image) → Parsing (OCR if needed)
-    ↓
-Text Normalization → Embedding (nomic-embed-text)
-    ↓
-Store in Qdrant (LTM)
-    ↓
-Recruiter Uploads JD or Enters Requirements
-    ↓
-JD Embedding → Retrieve Top Matching CVs from Qdrant
-    ↓
-Send Retrieved CVs + JD Context to Ollama LLM via LangChain
-    ↓
-Reasoning + Scoring + Summary + Recommendations
-    ↓
-Return Results to UI
+
 ```
 
 ```
 intellihire-ai/
 │
-├── app/                           # Main application logic
-│   ├── ingestion/                  # CV & JD ingestion and parsing
-│   │   ├── parse_cv.py
-│   │   ├── parse_jd.py
-│   │   └── ocr_utils.py
+├── app/                            # Main application logic
+│   ├── ingestion/                  # CV & JD ingestion and parsing (no UI)
+│   │   ├── parse_cv.py             # parse PDF/DOCX/TXT -> raw text + metadata
+│   │   ├── parse_jd.py             # normalize free-form JD text -> canonical JD object
+│   │   └── ocr_utils.py            # tesseract wrapper + image helpers
 │   │
-│   ├── embeddings/                 # Embedding generation logic
-│   │   ├── embedder.py
-│   │   └── model_config.py
+│   ├── pipelines/                  # High-level pipelines (batch & single-run)
+│   │   ├── ingest_pipeline.py      # text -> chunk -> embed -> upsert
+│   │   ├── batch_ranker.py         # given jd_id and CVs -> produce ranked results
+│   │   └── cv_rater.py             # rate a single CV against an active JD
 │   │
-│   ├── storage/                     # Qdrant vector DB interactions
-│   │   ├── qdrant_client.py
-│   │   ├── schema.py
-│   │   └── upsert.py
+│   ├── embeddings/                 # Embedding generation & model config
+│   │   ├── embedder.py             # async embedding interface (pluggable)
+│   │   └── model_config.py         # embedding dim, model name constants
 │   │
-│   ├── retrieval/                   # RAG retrieval logic
-│   │   ├── retriever.py
-│   │   └── filters.py
+│   ├── storage/                    # Qdrant vector DB interactions + schema
+│   │   ├── qdrant_client.py        # async wrapper around Qdrant (init, upsert, search)
+│   │   ├── schema.py               # <-- authoritative schema (app/storage/schema.py)
+│   │   └── upsert.py               # convenience upsert helpers
 │   │
-│   ├── reasoning/                   # Ollama + LangChain reasoning
-│   │   ├── scorer.py
-│   │   ├── summarizer.py
-│   │   └── prompts.py
+│   ├── scoring/                    # Scoring engine (Ollama + aggregator)
+│   │   ├── scorer.py               # call Ollama to get sub-scores & summaries
+│   │   ├── aggregator.py           # combine sub-scores into final rank (weights)
+│   │   └── prompts.py              # canonical prompts for rating/scoring (versioned)
 │   │
-│   ├── ui/                          # Optional front-end (Streamlit/Next.js)
-│   │   ├── app.py
-│   │   └── components/
+│   ├── retrieval/                  # RAG retrieval helpers around Qdrant
+│   │   ├── retriever.py            # typed retrieve functions for CV/JD collections
+│   │   └── filters.py              # common HR filters (skills, location, years)
 │   │
-│   └── config/                      # Configuration files
-│       ├── settings.py
+│   ├── ui/                         # Streamlit or minimal demo UI (optional)
+│   │   ├── streamlit_app.py        # Streamlit integration (upload JD & CVs -> rank)
+│   │   └── components/             # small UI components (file list, result card)
+│   │
+│   └── config/                     # Config + settings (Pydantic BaseSettings)
+│       ├── settings.py             # env-driven settings (Qdrant host/ports, dims, names)
 │       └── constants.py
 │
-├── data/                            # Example CVs, JDs, and test data
-│   ├── cvs/
-│   ├── jds/
+├── data/                           # Example CVs, JDs, and demo results
+│   ├── samples/cvs/
+│   ├── samples/jds/
 │   └── sample_results/
 │
-├── tests/                           # Unit & integration tests
+├── scripts/                        # CLI convenience scripts (single-command)
+│   ├── init_qdrant.py              # create collections
+│   ├── ingest_jd.py                # ingest single JD (text/file) -> returns jd_id
+│   ├── ingest_cvs.py               # ingest folder of CVs -> returns list of cv_ids
+│   ├── run_batch_ranking.py        # run ranking for jd_id against stored cv_ids
+│   ├── rate_cv.py                  # rate a single CV against a JD (ad-hoc)
+│   └── run_demo.py                 # quick demo: ingest JD -> ingest CVs -> rank -> write results
+│
+├── tests/                          # Unit & integration tests
+│   ├── test_ingest.py
 │   ├── test_embeddings.py
-│   ├── test_retrieval.py
-│   ├── test_reasoning.py
+│   ├── test_ranking.py
 │   └── test_end_to_end.py
 │
-├── scripts/                         # Utility scripts
-│   ├── init_qdrant.py
-│   ├── run_ingestion.py
-│   ├── run_retrieval.py
-│   └── run_demo.py
+├── docs/
+│   ├── ARCHITECTURE.md
+│   └── PROMPTS.md
 │
 ├── requirements.txt
 ├── README.md
 ├── .env.example
 ├── .gitignore
 └── LICENSE
+
 
 ```
