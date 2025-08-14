@@ -2,6 +2,7 @@ import asyncio
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 from app.config.settings import settings
+from app.storage.schema import CVPayload
 
 
 class QdrantHandler:
