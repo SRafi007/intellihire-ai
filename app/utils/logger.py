@@ -52,3 +52,38 @@ def get_logger(name: Optional[str] = None) -> Logger:
     Call `configure_logging()` once on app startup (scripts or FastAPI startup event).
     """
     return logging.getLogger(name)
+
+
+"""
+# utils/logger.py
+
+import logging
+import sys
+from config.settings import settings
+
+# Configure the logger
+logger = logging.getLogger("intellihire")
+logger.setLevel(logging.DEBUG if settings.debug else logging.INFO)
+
+# Stream handler for console output
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.DEBUG if settings.debug else logging.INFO)
+
+# Log format
+formatter = logging.Formatter(
+    "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+console_handler.setFormatter(formatter)
+
+# Avoid duplicate handlers
+if not logger.hasHandlers():
+    logger.addHandler(console_handler)
+
+# Utility function for module-level logger retrieval
+def get_logger(name: str = None) -> logging.Logger:
+    if name:
+        return logger.getChild(name)
+    return logger
+
+"""
