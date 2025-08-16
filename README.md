@@ -107,3 +107,58 @@ intellihire-ai/
 ├── .gitignore
 └── LICENSE
 ```
+
+```mermaid
+graph TD
+    subgraph "Ingestion & Parsing"
+        A[User uploads CVs & JD] --> B{Parsing & Normalization};
+        B --> C[CV Text & Metadata];
+        B --> D[Normalized JD Object];
+    end
+
+    subgraph "Indexing"
+        C --> E[Chunking & Embedding];
+        D --> E;
+        E --> F[Vector DB upsert];
+        F --> G[Qdrant Vector Store];
+    end
+
+    subgraph "Ranking & Evaluation"
+        H[User requests ranking] --> I[Retrieval from Qdrant];
+        I --> J[Hybrid Scoring Engine];
+        J --> K[Semantic Scoring];
+        J --> L[Structured Scoring];
+        K --> M[LLM for Reasoning];
+        L --> M;
+        M --> N[Explainability & Skill Matching];
+        N --> O[Ranked List & Scores];
+        O --> P[Streamlit UI];
+    end
+
+    subgraph "Standalone CV Rating"
+        H' --> I'{Retrieval from Qdrant};
+        I' --> J'{Hybrid Scoring Engine};
+        J' --> K'{Semantic Scoring};
+        J' --> L'{Structured Scoring};
+        K' --> M'{LLM for Reasoning};
+        L' --> M';
+        M' --> N'{Explainability & Skill Matching};
+        N' --> O'{Single CV Rating & Explanation};
+        O' --> P{Streamlit UI};
+    end
+
+    subgraph "LLM Model"
+        direction LR
+        Q[Ollama Mistral 7B]
+    end
+
+    subgraph "External Storage"
+        direction LR
+        R[Qdrant via Docker]
+    end
+
+    G --> I;
+    G --> I';
+    Q --> M;
+    Q --> M';
+```
