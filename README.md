@@ -21,8 +21,6 @@ Built for **local-first** execution with **Mistral 7B (Ollama)** for reasoning, 
 
 
 ```
-
-```
 intellihire-ai/
 │
 ├── app/
